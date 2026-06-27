@@ -29,7 +29,7 @@ async function getAllSales() {
     const items = response.data.items || [];
     console.log(`✅ ${items.length} vendas encontradas`);
     items.forEach(sale => {
-      db.upsertSale({
+      db.upsertSale.run({
         id: sale.purchase?.transaction,
         status: sale.purchase?.status,
         product_name: sale.product?.name,
@@ -148,7 +148,7 @@ async function getSubscriptions() {
     const items = response.data.items || [];
     console.log(`✅ ${items.length} assinaturas encontradas`);
     items.forEach(sub => {
-      db.upsertSubscription({
+      db.upsertSubscription.run({
         id: sub.subscription_id || sub.subscriber_code,
         subscriber_code: sub.subscriber_code,
         status: sub.status,
@@ -238,7 +238,7 @@ async function getCoupons() {
     const items = response.data.items || [];
     console.log(`✅ ${items.length} cupons encontrados`);
     items.forEach(c => {
-      db.upsertCoupon({
+      db.upsertCoupon.run({
         id: c.id || c.code,
         code: c.code,
         coupon_type: c.coupon_type,
@@ -358,7 +358,7 @@ async function getProducts() {
     const items = response.data.items || [];
     console.log(`✅ ${items.length} produtos encontrados`);
     items.forEach(p => {
-      db.upsertProduct({
+      db.upsertProduct.run({
         id: p.id?.toString(),
         name: p.name,
         status: p.status,
