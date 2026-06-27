@@ -3,7 +3,7 @@ const axios = require('axios');
 const { getToken } = require('./auth');
 const db = require('./db');
 
-const BASE_URL = 'https://api.hotmart.com';
+const BASE_URL = 'https://developers.hotmart.com';
 
 async function client() {
   const token = await getToken();
@@ -11,7 +11,8 @@ async function client() {
     baseURL: BASE_URL,
     headers: {
       Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
     }
   });
 }
@@ -24,20 +25,20 @@ async function getAllSales() {
   console.log('\n📥 Buscando todas as vendas...');
   try {
     const http = await client();
-    const response = await http.get('/payment/api/v1/sales/history');
+    const response = await http.get('/payments/api/v1/sales/history');
     const items = response.data.items || [];
     console.log(`✅ ${items.length} vendas encontradas`);
     items.forEach(sale => {
       db.upsertSale({
-        id: sale.purchase?.transaction || sale.purchase?.order_date?.toString(),
+        id: sale.purchase?.transaction,
         status: sale.purchase?.status,
         product_name: sale.product?.name,
         product_id: sale.product?.id?.toString(),
         buyer_name: sale.buyer?.name,
         buyer_email: sale.buyer?.email,
-        payment_method: sale.purchase?.payment?.type,
+        payment_method: sale.purchase?.payment?.method,
         value: sale.purchase?.price?.value,
-        currency: sale.purchase?.price?.currency_value,
+        currency: sale.purchase?.price?.currency_code,
         created_at: new Date(sale.purchase?.order_date).toISOString()
       });
     });
@@ -51,7 +52,7 @@ async function getSalesByDateRange(startDate, endDate) {
   console.log(`\n📥 Vendas de ${startDate} até ${endDate}...`);
   try {
     const http = await client();
-    const response = await http.get('/payment/api/v1/sales/history', {
+    const response = await http.get('/payments/api/v1/sales/history', {
       params: {
         start_date: new Date(startDate).getTime(),
         end_date: new Date(endDate).getTime()
@@ -67,7 +68,7 @@ async function getSalesByStatus(status) {
   console.log(`\n📥 Vendas com status: ${status}...`);
   try {
     const http = await client();
-    const response = await http.get('/payment/api/v1/sales/history', {
+    const response = await http.get('/payments/api/v1/sales/history', {
       params: { transaction_status: status }
     });
     return response.data.items || [];
@@ -114,7 +115,7 @@ async function analyzeSales() {
       analysis.por_produto[produto].vendas += 1;
       analysis.por_produto[produto].receita += valor;
 
-      const metodo = sale.purchase?.payment?.type || 'unknown';
+      const metodo = sale.purchase?.payment?.method || 'unknown';
       analysis.por_metodo[metodo] = (analysis.por_metodo[metodo] || 0) + 1;
     });
 
@@ -143,7 +144,7 @@ async function getSubscriptions() {
   console.log('\n📥 Buscando assinaturas...');
   try {
     const http = await client();
-    const response = await http.get('/payment/api/v1/subscriptions');
+    const response = await http.get('/payments/api/v1/subscriptions');
     const items = response.data.items || [];
     console.log(`✅ ${items.length} assinaturas encontradas`);
     items.forEach(sub => {
@@ -169,7 +170,7 @@ async function getActiveSubscriptions() {
   console.log('\n📥 Buscando assinaturas ATIVAS...');
   try {
     const http = await client();
-    const response = await http.get('/payment/api/v1/subscriptions', {
+    const response = await http.get('/payments/api/v1/subscriptions', {
       params: { status: 'ACTIVE' }
     });
     return response.data.items || [];
@@ -199,7 +200,7 @@ async function reactivateSubscription(subscriptionId) {
   try {
     const http = await client();
     const response = await http.post(
-      `/payment/api/v1/subscriptions/${subscriptionId}/reactivate`,
+      `/payments/api/v1/subscriptions/${subscriptionId}/reactivate`,
       { charge_now: true }
     );
     console.log('✅ Assinatura reativada!');
@@ -215,7 +216,7 @@ async function changeBillingDate(subscriptionId, newDay) {
   try {
     const http = await client();
     const response = await http.put(
-      `/payment/api/v1/subscriptions/${subscriptionId}/billing-date`,
+      `/payments/api/v1/subscriptions/${subscriptionId}/billing-date`,
       { billing_day: newDay }
     );
     console.log('✅ Data de cobrança atualizada!');
@@ -233,7 +234,7 @@ async function getCoupons() {
   console.log('\n📥 Buscando cupons...');
   try {
     const http = await client();
-    const response = await http.get('/payment/api/v1/coupons');
+    const response = await http.get('/payments/api/v1/coupons');
     const items = response.data.items || [];
     console.log(`✅ ${items.length} cupons encontrados`);
     items.forEach(c => {
@@ -257,7 +258,7 @@ async function createCoupon(couponData) {
   console.log(`\n🎟️  Criando cupom: ${couponData.code}...`);
   try {
     const http = await client();
-    const response = await http.post('/payment/api/v1/coupons', couponData);
+    const response = await http.post('/payments/api/v1/coupons', couponData);
     console.log('✅ Cupom criado com sucesso!');
     return response.data;
   } catch (error) {
@@ -292,7 +293,7 @@ async function updateCoupon(couponId, updates) {
   console.log(`\n✏️  Atualizando cupom ${couponId}...`);
   try {
     const http = await client();
-    const response = await http.put(`/payment/api/v1/coupons/${couponId}`, updates);
+    const response = await http.put(`/payments/api/v1/coupons/${couponId}`, updates);
     console.log('✅ Cupom atualizado!');
     return response.data;
   } catch (error) {
@@ -309,7 +310,7 @@ async function processRefund(saleId, reason = 'Customer request') {
   try {
     const http = await client();
     const response = await http.post(
-      `/payment/api/v1/sales/${saleId}/refund`,
+      `/payments/api/v1/sales/${saleId}/refund`,
       { reason }
     );
     console.log('✅ Reembolso processado!');
@@ -353,7 +354,7 @@ async function getProducts() {
   console.log('\n📦 Buscando produtos...');
   try {
     const http = await client();
-    const response = await http.get('/payment/api/v1/products');
+    const response = await http.get('/payments/api/v1/products');
     const items = response.data.items || [];
     console.log(`✅ ${items.length} produtos encontrados`);
     items.forEach(p => {
@@ -375,7 +376,7 @@ async function getProductDetails(productId) {
   console.log(`\n📦 Buscando detalhes do produto ${productId}...`);
   try {
     const http = await client();
-    const response = await http.get(`/payment/api/v1/products/${productId}`);
+    const response = await http.get(`/payments/api/v1/products/${productId}`);
     return response.data;
   } catch (error) {
     console.error('❌ Erro:', error.message);
